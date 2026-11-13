@@ -1,0 +1,38 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+Cache Cleaner Pro: a macOS (14+) SwiftUI app that scans the user's home folder for caches, logs, developer junk, backups and large files, then moves the chosen items to the Trash or deletes them. It has a main window, a Settings window and a `MenuBarExtra`.
+
+## Commands
+
+```sh
+# Build (Debug)
+xcodebuild -project CacheCleanerPro.xcodeproj -scheme CacheCleanerPro -configuration Debug -derivedDataPath build build
+
+# Run the built app
+open "build/Build/Products/Debug/Cache Cleaner Pro.app"
+```
+
+There is no test target and no linter. To check scan/clean logic without the UI, compile `Models.swift` + `ScanEngine.swift` with a throwaway `main.swift` via `xcrun swiftc -swift-version 6`. Point it at temp folders **inside the home folder**, because `Cleaner.run` refuses any path outside it.
+
+## Project setup constraints
+
+- The project uses a file-system-synchronized group: any file placed in `CacheCleanerPro/` is compiled automatically, so there is no need to edit `project.pbxproj` when adding files.
+- **App Sandbox must stay off.** The app reads `~/Library`, `~/.Trash` etc. via `homeDirectoryForCurrentUser`, which under the sandbox resolves to the app's container.
+- Swift 6 language mode **without** default MainActor isolation. Turning on Xcode 26's "Default Actor Isolation = MainActor" breaks the build (model types and `ScanEngine` become main-actor-isolated). Scan/clean functions are marked `nonisolated static` so they run off the main actor.
+- Some protected folders (Trash, Mail downloads, iOS backups) need Full Disk Access; without it a category reports `accessDenied` rather than failing.
+
+## Architecture
+
+Data flows one way: `CleanupCategory` (definition) → `ScanEngine` (finds items) → `CleanerStore` (state + selection) → views → `Cleaner` (removal).
+
+- **`CleanupCategory` (Models.swift) is the single source of truth for a category.** Its title, colour, group, `safety`, home-relative `roots`, `scanMode` (`.children` = one row per child, `.wholeRoot` = the folder is one row, `.largeFiles` = recursive size search) and `allowedExtensions` all live on the enum. To add a category, add a case and fill in every switch; the sidebar, dashboard and scan pick it up through `allCases`.
+- **Safety level drives defaults.** `.safe` categories are ticked after a scan; `.review` categories are never auto-ticked. `.trash` is `alwaysPermanent`.
+- **Smart Clean is rule-based, separate from category ticks.** After each scan, `SmartRules.evaluate` (run off the main actor) turns scan results into `SmartPick`s, each with a reason and a `recommended` flag. Examples: DerivedData whose `info.plist` `WorkspacePath` is gone or `LastAccessedDate` is 30+ days old; all but the newest Device Support version; caches of running apps shown unticked. Folder ages use the newest file inside (`latestModification`), because a folder's own date doesn't reflect nested changes. `SmartCleanView` is a sheet on the main window with its own tick state; the Dashboard and the menu bar open it via `store.openSmartClean()`. It removes items through the same `store.clean(_:)` path. To add a rule, add a `case` in `evaluate`.
+- **`CleanerStore`** (`@MainActor @Observable`, injected via `.environment`) holds results, the selection (`Set<URL>`, keyed by item URL across all categories), settings and history. Settings and history are persisted to `UserDefaults` as JSON in their `didSet`. Scans run one task per category in a `TaskGroup`; cleaning runs `Cleaner.run` in a detached task.
+- **Exclusions ("Never Clean") are enforced in three places, and they must stay consistent:**
+  1. `ScanEngine.cleanableItems` skips excluded items. If an item *contains* an excluded path, it lists the item's children instead, recursively.
+  2. `Cleaner.run` refuses any job whose path equals, is inside, or contains an excluded path. This guards against stale scan results.
+  3. `CleanerStore.exclude` removes overlapping rows from the current results and selection.
+- **`Cleaner.run` safety net:** it only touches paths inside the home folder and never a protected top-level folder (`~/Documents`, `~/Library`, …). Keep these checks when changing removal code.
