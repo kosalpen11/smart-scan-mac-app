@@ -5,11 +5,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     func applicationDidFinishLaunching(_ notification: Notification) {
         UNUserNotificationCenter.current().delegate = self
         Notifier.configure()
-        Task {
-            await Notifier.requestAuthorization()
-            Scheduler.shared.start()
-            await AppStore.shared.refreshTrash()
-        }
+        // Don't wait for the permission prompt: if it's never answered, due rules
+        // still run and open the review window directly.
+        Scheduler.shared.start()
+        Task { await Notifier.requestAuthorization() }
+        Task { await AppStore.shared.refreshTrash() }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
