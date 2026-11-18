@@ -6,6 +6,9 @@ import ServiceManagement
 @MainActor
 @Observable
 final class CleanerStore {
+    /// Shared so the scheduler, notifications and review window can reach it.
+    static let shared = CleanerStore()
+
     enum Phase: Equatable { case idle, scanning, cleaning }
 
     // Scan state

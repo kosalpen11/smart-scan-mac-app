@@ -33,6 +33,13 @@ struct HistoryView: View {
                 List(store.history) { record in
                     HStack(spacing: 12) {
                         HStack(spacing: -6) {
+                            if record.categories.isEmpty {
+                                Image(systemName: "calendar.badge.clock")
+                                    .font(.caption)
+                                    .foregroundStyle(.white)
+                                    .frame(width: 24, height: 24)
+                                    .background(Color.accentColor.gradient, in: Circle())
+                            }
                             ForEach(record.categories.prefix(4), id: \.self) { category in
                                 Image(systemName: category.symbol)
                                     .font(.caption)
@@ -46,7 +53,7 @@ struct HistoryView: View {
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(record.date.formatted(date: .abbreviated, time: .shortened))
-                            Text(record.categories.map(\.title).joined(separator: ", "))
+                            Text(record.ruleName ?? record.categories.map(\.title).joined(separator: ", "))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)

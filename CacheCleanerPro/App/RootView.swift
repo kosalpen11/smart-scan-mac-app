@@ -3,6 +3,7 @@ import SwiftUI
 enum Route: Hashable {
     case dashboard
     case history
+    case schedules
     case category(CleanupCategory)
 }
 
@@ -20,6 +21,8 @@ struct RootView: View {
                         .tag(Route.dashboard)
                     Label("History", systemImage: "clock.arrow.circlepath")
                         .tag(Route.history)
+                    Label("Schedules", systemImage: "calendar.badge.clock")
+                        .tag(Route.schedules)
                 }
                 ForEach(CategoryGroup.allCases) { group in
                     Section(group.rawValue) {
@@ -37,6 +40,8 @@ struct RootView: View {
                 DashboardView(route: $route)
             case .history:
                 HistoryView()
+            case .schedules:
+                SchedulesView()
             case .category(let category):
                 CategoryView(category: category)
                     .id(category)

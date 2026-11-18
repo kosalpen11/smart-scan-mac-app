@@ -217,6 +217,8 @@ struct CleanRecord: Codable, Identifiable {
     let bytes: Int64
     let itemCount: Int
     let categories: [CleanupCategory]
+    /// Set for scheduled cleanups and Empty Trash, which have no category.
+    var ruleName: String? = nil
 
     private static let key = "CleanHistory.v1"
 

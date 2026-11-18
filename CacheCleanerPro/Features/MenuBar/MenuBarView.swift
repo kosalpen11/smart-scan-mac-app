@@ -64,6 +64,10 @@ struct MenuBarView: View {
 
             Divider()
 
+            ScheduleMenuSection()
+
+            Divider()
+
             HStack {
                 Button("Open Cache Cleaner Pro") {
                     openWindow(id: "main")

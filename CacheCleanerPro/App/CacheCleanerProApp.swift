@@ -2,12 +2,15 @@ import SwiftUI
 
 @main
 struct CacheCleanerProApp: App {
-    @State private var store = CleanerStore()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @State private var store = CleanerStore.shared
+    @State private var schedules = ScheduleStore.shared
 
     var body: some Scene {
         WindowGroup("Cache Cleaner Pro", id: "main") {
             RootView()
                 .environment(store)
+                .environment(schedules)
                 .frame(minWidth: 920, minHeight: 620)
                 .task {
                     if store.settings.scanOnLaunch && !store.hasScanned {
@@ -32,6 +35,7 @@ struct CacheCleanerProApp: App {
         MenuBarExtra {
             MenuBarView()
                 .environment(store)
+                .environment(schedules)
         } label: {
             Image(systemName: "sparkles")
         }
